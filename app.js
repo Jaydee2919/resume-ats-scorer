@@ -189,14 +189,31 @@ async function runAnalysis() {
       keywordResult = computeKeywordMatch(resumeText, jd);
     }
 
-    advanceStep(); // step 4
+    // Step 4: AI (only attempt if key + JD are present)
+    const hasJD = !!(jd && jd.length > 20);
+    const aiKeyWasSet = !!geminiApiKey;
     let aiResult = null;
-    if (geminiApiKey && jd && jd.length > 20) {
+    let aiFailed = false;
+
+    if (aiKeyWasSet && hasJD) {
+      advanceStep(); // step 4 active
       document.getElementById('loading-text').textContent = 'Getting AI insights...';
-      aiResult = await callGeminiAPI(resumeText, jd);
+      try {
+        aiResult = await callGeminiAPI(resumeText, jd);
+        if (!aiResult) aiFailed = true; // key set but response was null
+      } catch (aiErr) {
+        aiFailed = true;
+        // Re-throw only if it's an invalid key error
+        if (aiErr.message.includes('Invalid Gemini')) throw aiErr;
+      }
+    } else {
+      // Skip step 4 visually
+      const s4 = document.getElementById('step-4');
+      s4.classList.remove('active');
+      s4.classList.add('done');
     }
 
-    // Finalize steps
+    // Finalize all steps
     steps.forEach(id => {
       const el = document.getElementById(id);
       el.classList.remove('active');
@@ -214,7 +231,7 @@ async function runAnalysis() {
     }
     finalScore = Math.min(100, finalScore);
 
-    renderResults({ finalScore, ats: atsResult, keywords: keywordResult, ai: aiResult, hasJD: !!(jd && jd.length > 20) });
+    renderResults({ finalScore, ats: atsResult, keywords: keywordResult, ai: aiResult, hasJD, aiKeyWasSet, aiFailed });
 
   } catch (err) {
     showLoading(false);
@@ -421,13 +438,32 @@ function renderResults(data) {
     renderTags('missing-tags', data.keywords.missingKeywords, 'missing-tag');
   }
 
-  // AI
+  // AI section — three possible states:
   if (data.ai) {
+    // ✅ AI succeeded — show full insights
     document.getElementById('ai-section').classList.remove('hidden');
     renderAI(data.ai);
-  } else if (data.hasJD) {
+  } else if (data.hasJD && data.aiKeyWasSet && data.aiFailed) {
+    // ⚠️ Key was set but API call returned nothing — show soft error
     document.getElementById('ai-nudge').classList.remove('hidden');
+    const nudgeText = document.querySelector('#ai-nudge .nudge-text');
+    nudgeText.innerHTML = `
+      <strong>⚠️ AI insights unavailable</strong>
+      <p>The Gemini API returned no response. Your key may be invalid, have no quota, or the request timed out. <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent-violet)">Check your key →</a></p>
+    `;
+    document.querySelector('#ai-nudge .nudge-btn').style.display = 'none';
+  } else if (data.hasJD && !data.aiKeyWasSet) {
+    // ℹ️ No key at all — invite them to add one
+    document.getElementById('ai-nudge').classList.remove('hidden');
+    // Reset nudge to default content (in case it was changed by a previous failed run)
+    const nudgeText = document.querySelector('#ai-nudge .nudge-text');
+    nudgeText.innerHTML = `
+      <strong>🤖 Unlock AI-powered insights</strong>
+      <p>Click <strong>"🔑 API Key"</strong> in the top-right and enter your free Gemini API key to get deep semantic analysis, skill gap detection, and personalized recommendations. <em>Your key stays in your browser only — other visitors cannot see or use it.</em></p>
+    `;
+    document.querySelector('#ai-nudge .nudge-btn').style.display = '';
   }
+  // If no JD was provided, show nothing — no nag at all
 
   // Sections
   renderSections(data.ats.details.sections);
@@ -539,6 +575,9 @@ function hideResults() {
   ['results-section','keywords-section','ai-section','ai-nudge','kw-breakdown','ai-breakdown'].forEach(id => {
     document.getElementById(id).classList.add('hidden');
   });
+  // Reset nudge button visibility in case it was hidden by a failed AI run
+  const nudgeBtn = document.querySelector('#ai-nudge .nudge-btn');
+  if (nudgeBtn) nudgeBtn.style.display = '';
 }
 
 function setAnalyzeBtn(loading) {

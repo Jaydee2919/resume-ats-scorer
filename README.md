@@ -1,90 +1,59 @@
 # ResumeAI — ATS Score & Job Match Analyzer
 
-A full-stack Node.js web application that scores your resume against ATS (Applicant Tracking System) criteria and provides AI-powered matching insights when compared with a job description.
+🚀 **Live Demo**: [https://Jaydee2919.github.io/resume-ats-scorer](https://Jaydee2919.github.io/resume-ats-scorer)
+
+An AI-powered resume ATS scorer that runs **entirely in your browser** — your resume never leaves your device.
 
 ## ✨ Features
 
 - 📄 **Resume Upload** — Drag & drop PDF or paste plain text
-- 🎯 **ATS Score** — Animated circular gauge (0–100) with detailed breakdown
+- 🎯 **ATS Score** — Animated circular gauge (0–100) with section-by-section breakdown
 - 🔑 **Keyword Analysis** — Matched vs. missing keywords from the job description
-- 📊 **Section Detection** — Checks for contact, experience, education, skills, etc.
-- ✅ **Strengths & Issues** — Clear list of what's working and what needs fixing
-- 🤖 **Gemini AI Insights** *(optional)* — Deep semantic analysis, skill gap detection, and personalized recommendations
-- 🌙 **Premium Dark UI** — Glassmorphism design with smooth animations
+- 📊 **Section Detection** — Automatically checks for contact, experience, education, skills, etc.
+- ✅ **Strengths & Issues** — Clear, actionable feedback
+- 🤖 **Gemini AI Insights** *(optional, free)* — Deep semantic analysis, skill gaps, and personalized recommendations
+- 🔒 **100% Private** — Everything runs in your browser, nothing is sent to any server
 
-## 🚀 Quick Start
+## 🚀 How to Use
 
-### 1. Install dependencies
+1. Visit the live site
+2. Upload your resume PDF (or paste the text)
+3. Paste the job description (optional, enables keyword matching)
+4. Click **Analyze Resume**
+5. *(Optional)* Click **🔑 Add API Key** and enter your free Gemini API key for AI-powered insights
 
-```bash
-npm install
-```
+### Getting a Free Gemini API Key
 
-### 2. Configure environment
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env`:
-```env
-# Optional: add your Gemini API key for AI-powered insights
-# Get a free key at https://aistudio.google.com/app/apikey
-GEMINI_API_KEY=your_key_here
-
-PORT=3000
-```
-
-### 3. Start the server
-
-```bash
-npm start
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## 🤖 AI Mode (Gemini)
-
-Without a Gemini API key, the app runs in **rule-based mode** — still very useful!
-
-With a key added to `.env`, you get:
-- Deep semantic matching between resume and job description
-- Personalized improvement recommendations
-- Skill gap analysis
-- ATS optimization tips
-
-Get a **free** Gemini API key at [aistudio.google.com](https://aistudio.google.com/app/apikey).
-
-## 📁 Project Structure
-
-```
-resume-ats-scorer/
-├── server.js          ← Express backend
-├── utils/
-│   ├── pdfParser.js   ← PDF text extraction
-│   └── atsScorer.js   ← Scoring engine + Gemini AI
-├── public/
-│   ├── index.html     ← Single-page frontend
-│   ├── style.css      ← Dark glassmorphism UI
-│   └── app.js         ← Frontend logic
-├── .env.example       ← Environment template
-└── package.json
-```
+1. Go to [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
+2. Click **Create API Key**
+3. Copy the key and paste it into the **🔑 Add API Key** button in the app
+4. Your key is stored only in your browser's localStorage — never sent anywhere except Google's API
 
 ## 🛠 Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Runtime | Node.js 18+ |
-| Framework | Express.js |
-| PDF Parsing | pdf-parse |
-| File Upload | multer |
-| AI Scoring | Google Gemini 1.5 Flash |
-| Frontend | HTML5 + Vanilla CSS + JS |
+| Frontend | HTML5 + Vanilla CSS + Vanilla JS |
+| PDF Parsing | [PDF.js](https://mozilla.github.io/pdf.js/) (CDN, browser-side) |
+| AI Analysis | Google Gemini 1.5 Flash API (browser fetch) |
+| Hosting | GitHub Pages |
+
+## 📁 Project Structure
+
+```
+resume-ats-scorer/
+├── index.html    ← Main page
+├── style.css     ← Dark glassmorphism design
+├── app.js        ← All logic (PDF parsing, scoring, AI)
+└── README.md
+```
 
 ## 🔒 Privacy
 
-Your resume file is **deleted immediately** after analysis. No data is stored on the server.
+- Your resume is **never uploaded** to any server
+- PDF parsing happens locally in your browser using PDF.js
+- The Gemini API key is stored in `localStorage` on your device only
+- AI calls go directly from your browser to Google's API
 
 ## 📜 License
 

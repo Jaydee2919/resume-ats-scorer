@@ -4,20 +4,26 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ResumeAI — ATS Score & Job Match Analyzer</title>
-  <meta name="description" content="Upload your resume and paste a job description to get an instant ATS score, keyword match analysis, and AI-powered career insights." />
+  <meta name="description" content="Free AI-powered resume ATS scorer. Upload your resume, paste a job description, and get an instant ATS score, keyword analysis, and Gemini AI insights — runs entirely in your browser." />
+
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- PDF.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <!-- ── Header ─────────────────────────────────────────────────── -->
+  <!-- ── Header ──────────────────────────────────────────────────── -->
   <header class="header">
     <div class="header-inner">
       <div class="logo">
         <div class="logo-icon">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg viewBox="0 0 24 24" fill="none">
             <path d="M9 12h6M9 16h6M9 8h3M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             <circle cx="18" cy="18" r="4" fill="currentColor" opacity="0.8"/>
             <path d="M16.5 18l1 1 2-2" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -25,14 +31,39 @@
         </div>
         <span class="logo-text">Resume<span class="logo-accent">AI</span></span>
       </div>
-      <div class="header-badge" id="ai-badge">
-        <span class="badge-dot"></span>
-        <span class="badge-label">Loading...</span>
+      <div class="header-right">
+        <div class="header-badge" id="ai-badge">
+          <span class="badge-dot inactive"></span>
+          <span class="badge-label">No API Key</span>
+        </div>
+        <button class="api-key-btn" id="api-key-btn" onclick="toggleApiKeyPanel()">🔑 Add API Key</button>
+      </div>
+    </div>
+
+    <!-- API Key Dropdown Panel -->
+    <div class="api-panel hidden" id="api-panel">
+      <div class="api-panel-inner">
+        <div class="api-panel-label">
+          <strong>🤖 Gemini API Key</strong>
+          <span>Enables AI-powered insights. Stored in browser only — never sent anywhere except Google.</span>
+        </div>
+        <div class="api-input-row">
+          <input
+            type="password"
+            id="api-key-input"
+            class="api-key-input"
+            placeholder="AIza..."
+            autocomplete="off"
+          />
+          <button class="api-save-btn" onclick="saveApiKey()">Save</button>
+          <button class="api-clear-btn" onclick="clearApiKey()">Clear</button>
+        </div>
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="api-get-link">Get a free Gemini API key →</a>
       </div>
     </div>
   </header>
 
-  <!-- ── Hero ───────────────────────────────────────────────────── -->
+  <!-- ── Hero ────────────────────────────────────────────────────── -->
   <section class="hero">
     <div class="hero-bg">
       <div class="hero-orb hero-orb-1"></div>
@@ -40,20 +71,20 @@
       <div class="hero-orb hero-orb-3"></div>
     </div>
     <div class="hero-content">
-      <div class="hero-chip">✦ AI-Powered Career Tool</div>
+      <div class="hero-chip">✦ AI-Powered · Runs in Your Browser · 100% Private</div>
       <h1 class="hero-title">
         Beat the ATS.<br />
         <span class="gradient-text">Land the Interview.</span>
       </h1>
-      <p class="hero-subtitle">Upload your resume and paste the job description — get an instant ATS score, keyword gaps, and AI-powered recommendations to maximize your chances.</p>
+      <p class="hero-subtitle">Upload your resume and paste the job description — get an instant ATS score, keyword gap analysis, and Gemini AI-powered recommendations to maximize your chances.</p>
     </div>
   </section>
 
-  <!-- ── Main Input Grid ────────────────────────────────────────── -->
-  <main class="main-container" id="main-app">
+  <!-- ── Main ─────────────────────────────────────────────────────── -->
+  <main class="main-container">
     <div class="input-grid">
 
-      <!-- Resume Upload Card -->
+      <!-- Resume Card -->
       <div class="card" id="resume-card">
         <div class="card-header">
           <div class="card-icon resume-icon">
@@ -65,13 +96,11 @@
           </div>
         </div>
 
-        <!-- Tab switcher -->
         <div class="tab-group" role="tablist">
-          <button class="tab-btn active" id="tab-upload" role="tab" aria-selected="true" onclick="switchTab('upload')">📎 Upload PDF</button>
-          <button class="tab-btn" id="tab-paste" role="tab" aria-selected="false" onclick="switchTab('paste')">✏️ Paste Text</button>
+          <button class="tab-btn active" id="tab-upload" role="tab" onclick="switchTab('upload')">📎 Upload PDF</button>
+          <button class="tab-btn" id="tab-paste" role="tab" onclick="switchTab('paste')">✏️ Paste Text</button>
         </div>
 
-        <!-- Upload panel -->
         <div id="panel-upload" class="tab-panel">
           <div class="dropzone" id="dropzone"
                ondragover="handleDragOver(event)"
@@ -82,20 +111,16 @@
               <svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="17,8 12,3 7,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </div>
             <p class="dropzone-text">Drop your PDF here</p>
-            <p class="dropzone-hint">or click to browse — max 10MB</p>
-            <div class="dropzone-file-info" id="file-info" style="display:none"></div>
+            <p class="dropzone-hint">or click to browse · max 10MB · processed in browser</p>
+            <div class="dropzone-file-info hidden" id="file-info"></div>
           </div>
           <input type="file" id="file-input" accept=".pdf" style="display:none" onchange="handleFileSelect(event)" />
         </div>
 
-        <!-- Paste panel -->
         <div id="panel-paste" class="tab-panel hidden">
-          <textarea
-            id="resume-text"
-            class="text-area"
-            placeholder="Paste your resume content here...&#10;&#10;Include your name, contact info, experience, education, skills, etc."
-            rows="10"
-          ></textarea>
+          <textarea id="resume-text" class="text-area"
+            placeholder="Paste your resume content here...&#10;&#10;Include name, contact info, experience, education, skills, etc."
+            rows="11"></textarea>
         </div>
       </div>
 
@@ -107,54 +132,57 @@
           </div>
           <div>
             <h2 class="card-title">Job Description</h2>
-            <p class="card-subtitle">Optional — for match analysis</p>
+            <p class="card-subtitle">Optional — enables keyword matching</p>
           </div>
         </div>
-        <textarea
-          id="job-description"
-          class="text-area"
-          placeholder="Paste the job description here...&#10;&#10;Include the full posting: responsibilities, requirements, preferred qualifications, etc."
-          rows="13"
-        ></textarea>
+        <textarea id="job-description" class="text-area"
+          placeholder="Paste the job description here...&#10;&#10;Include the full posting: responsibilities, requirements, qualifications, etc."
+          rows="14"></textarea>
       </div>
     </div>
 
     <!-- Analyze Button -->
     <div class="analyze-row">
-      <button class="analyze-btn" id="analyze-btn" onclick="analyzeResume()">
+      <button class="analyze-btn" id="analyze-btn" onclick="runAnalysis()">
         <span class="btn-icon">
           <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </span>
         <span class="btn-text">Analyze Resume</span>
         <span class="btn-shimmer"></span>
       </button>
-      <p class="analyze-note">Your resume is never stored permanently — it's deleted after analysis.</p>
+      <p class="analyze-note">🔒 Everything runs in your browser — your resume never leaves your device</p>
     </div>
 
-    <!-- Loading State -->
+    <!-- Loading -->
     <div class="loading-state hidden" id="loading-state">
       <div class="loading-spinner"></div>
-      <p class="loading-text">Analyzing your resume...</p>
-      <div class="loading-steps" id="loading-steps">
-        <div class="loading-step active" id="step-1">📄 Parsing resume content</div>
-        <div class="loading-step" id="step-2">🔍 Running ATS checks</div>
-        <div class="loading-step" id="step-3">🎯 Matching keywords</div>
-        <div class="loading-step" id="step-4">🤖 Generating AI insights</div>
+      <p class="loading-text" id="loading-text">Parsing your resume...</p>
+      <div class="loading-steps">
+        <div class="loading-step" id="step-1">📄 Parsing resume</div>
+        <div class="loading-step" id="step-2">🔍 ATS analysis</div>
+        <div class="loading-step" id="step-3">🎯 Keyword matching</div>
+        <div class="loading-step" id="step-4">🤖 AI insights</div>
       </div>
     </div>
 
-    <!-- ── Results Section ──────────────────────────────────── -->
+    <!-- ── Results ─────────────────────────────────────────────────── -->
     <section class="results-section hidden" id="results-section">
 
       <!-- Score Hero -->
       <div class="score-hero">
         <div class="score-card">
           <div class="score-ring-container">
-            <svg class="score-ring" viewBox="0 0 120 120">
+            <svg class="score-ring" viewBox="0 0 120 120" id="score-svg">
+              <defs>
+                <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="hsl(259,85%,65%)"/>
+                  <stop offset="50%" stop-color="hsl(214,100%,60%)"/>
+                  <stop offset="100%" stop-color="hsl(320,80%,62%)"/>
+                </linearGradient>
+              </defs>
               <circle class="ring-bg" cx="60" cy="60" r="50"/>
               <circle class="ring-progress" id="ring-progress" cx="60" cy="60" r="50"
-                      stroke-dasharray="314.16"
-                      stroke-dashoffset="314.16"/>
+                      stroke-dasharray="314.16" stroke-dashoffset="314.16"/>
             </svg>
             <div class="score-center">
               <div class="score-number" id="score-number">0</div>
@@ -166,25 +194,20 @@
         </div>
 
         <div class="score-breakdown">
+          <h3 class="breakdown-title">Score Breakdown</h3>
           <div class="breakdown-item" id="ats-breakdown">
             <span class="breakdown-label">Base ATS</span>
-            <div class="breakdown-bar-wrap">
-              <div class="breakdown-bar" id="bar-ats"></div>
-            </div>
+            <div class="breakdown-bar-wrap"><div class="breakdown-bar" id="bar-ats"></div></div>
             <span class="breakdown-val" id="val-ats">-</span>
           </div>
           <div class="breakdown-item hidden" id="kw-breakdown">
             <span class="breakdown-label">Keyword Match</span>
-            <div class="breakdown-bar-wrap">
-              <div class="breakdown-bar breakdown-bar-purple" id="bar-kw"></div>
-            </div>
+            <div class="breakdown-bar-wrap"><div class="breakdown-bar breakdown-bar-purple" id="bar-kw"></div></div>
             <span class="breakdown-val" id="val-kw">-</span>
           </div>
           <div class="breakdown-item hidden" id="ai-breakdown">
             <span class="breakdown-label">AI Match Score</span>
-            <div class="breakdown-bar-wrap">
-              <div class="breakdown-bar breakdown-bar-pink" id="bar-ai"></div>
-            </div>
+            <div class="breakdown-bar-wrap"><div class="breakdown-bar breakdown-bar-pink" id="bar-ai"></div></div>
             <span class="breakdown-val" id="val-ai">-</span>
           </div>
         </div>
@@ -193,97 +216,74 @@
       <!-- Strengths & Warnings -->
       <div class="two-col-grid">
         <div class="info-card strengths-card">
-          <h3 class="info-card-title">
-            <span class="title-icon">✅</span> Strengths
-          </h3>
+          <h3 class="info-card-title"><span>✅</span> Strengths</h3>
           <ul class="info-list" id="strengths-list"></ul>
         </div>
         <div class="info-card warnings-card">
-          <h3 class="info-card-title">
-            <span class="title-icon">⚠️</span> Issues Found
-          </h3>
+          <h3 class="info-card-title"><span>⚠️</span> Issues Found</h3>
           <ul class="info-list" id="warnings-list"></ul>
         </div>
       </div>
 
-      <!-- Keywords Section -->
+      <!-- Keywords -->
       <div class="keywords-section hidden" id="keywords-section">
         <div class="section-header">
           <h3 class="section-title">🔑 Keyword Analysis</h3>
           <div class="match-badge" id="match-badge"></div>
         </div>
         <div class="keywords-grid">
-          <div class="keyword-panel matched-panel">
-            <h4 class="keyword-panel-title">✓ Matched Keywords</h4>
+          <div class="keyword-panel">
+            <h4 class="keyword-panel-title matched-title">✓ Matched Keywords</h4>
             <div class="keyword-tags" id="matched-tags"></div>
           </div>
-          <div class="keyword-panel missing-panel">
-            <h4 class="keyword-panel-title">✗ Missing Keywords</h4>
+          <div class="keyword-panel">
+            <h4 class="keyword-panel-title missing-title">✗ Missing Keywords</h4>
             <div class="keyword-tags" id="missing-tags"></div>
           </div>
         </div>
       </div>
 
-      <!-- AI Insights Section -->
+      <!-- AI Insights -->
       <div class="ai-section hidden" id="ai-section">
         <div class="ai-header">
-          <div class="ai-label">
-            <div class="ai-pulse"></div>
-            <span>Gemini AI Analysis</span>
-          </div>
+          <div class="ai-label"><div class="ai-pulse"></div><span>Gemini AI Analysis</span></div>
           <div class="fit-badge" id="fit-badge"></div>
         </div>
         <p class="ai-summary" id="ai-summary"></p>
-
         <div class="ai-grid">
-          <div class="ai-panel">
-            <h4 class="ai-panel-title">🌟 Top Strengths</h4>
-            <ul class="ai-list" id="ai-strengths"></ul>
-          </div>
-          <div class="ai-panel">
-            <h4 class="ai-panel-title">📉 Skill Gaps</h4>
-            <ul class="ai-list gap-list" id="ai-gaps"></ul>
-          </div>
+          <div class="ai-panel"><h4 class="ai-panel-title">🌟 Top Strengths</h4><ul class="ai-list" id="ai-strengths"></ul></div>
+          <div class="ai-panel"><h4 class="ai-panel-title">📉 Skill Gaps</h4><ul class="ai-list gap-list" id="ai-gaps"></ul></div>
         </div>
-
-        <div class="ai-panel full-width-panel">
-          <h4 class="ai-panel-title">🎯 ATS Optimization Tips</h4>
-          <ul class="ai-list" id="ai-tips"></ul>
-        </div>
-
-        <div class="ai-panel full-width-panel recommendations-panel">
-          <h4 class="ai-panel-title">💡 Recommendations</h4>
-          <ul class="ai-list" id="ai-recommendations"></ul>
-        </div>
+        <div class="ai-panel full-width-panel"><h4 class="ai-panel-title">🎯 ATS Optimization Tips</h4><ul class="ai-list" id="ai-tips"></ul></div>
+        <div class="ai-panel full-width-panel recommendations-panel"><h4 class="ai-panel-title">💡 Recommendations</h4><ul class="ai-list" id="ai-recommendations"></ul></div>
       </div>
 
-      <!-- No AI Nudge -->
+      <!-- AI Nudge -->
       <div class="ai-nudge hidden" id="ai-nudge">
         <div class="nudge-icon">🤖</div>
         <div class="nudge-text">
           <strong>Unlock AI-powered insights</strong>
-          <p>Add your Gemini API key to <code>.env</code> to get deep semantic analysis, personalized recommendations, and fit scoring.</p>
+          <p>Click <strong>"🔑 Add API Key"</strong> in the top-right and enter your free Gemini API key to get deep semantic analysis, skill gap detection, and personalized recommendations.</p>
         </div>
-        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="nudge-btn">Get Free API Key →</a>
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="nudge-btn">Get Free Key →</a>
       </div>
 
       <!-- Sections Detected -->
       <div class="sections-card">
-        <h3 class="info-card-title"><span class="title-icon">📋</span> Resume Sections Detected</h3>
+        <h3 class="info-card-title"><span>📋</span> Resume Sections Detected</h3>
         <div class="sections-grid" id="sections-grid"></div>
       </div>
 
-      <!-- Analyze Again -->
+      <!-- Re-analyze -->
       <div class="re-analyze-row">
         <button class="re-analyze-btn" onclick="resetForm()">← Analyze Another Resume</button>
       </div>
-
     </section>
   </main>
 
-  <!-- ── Footer ─────────────────────────────────────────────────── -->
+  <!-- Footer -->
   <footer class="footer">
-    <p>Built with Node.js + Gemini AI · Your resume is never stored permanently</p>
+    <p>ResumeAI · Powered by Gemini AI · Open Source on <a href="https://github.com/Jaydee2919/resume-ats-scorer" target="_blank" rel="noopener" style="color:var(--accent-violet)">GitHub</a> · Your data never leaves your browser</p>
   </footer>
 
   <script src="app.js"></script>

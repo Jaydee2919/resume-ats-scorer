@@ -9,10 +9,15 @@ if (window.pdfjsLib) {
     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
+// ── Config ─────────────────────────────────────────────────────────────────
+// Cloudflare Worker proxy URL — key is stored securely on Cloudflare.
+// All visitors get AI insights without needing their own key.
+const WORKER_URL = 'https://resumeai-gemini-proxy.jayant-db91.workers.dev/analyze';
+
 // ── State ──────────────────────────────────────────────────────────────────
 let selectedFile = null;
 let currentTab = 'upload';
-let geminiApiKey = '';
+let geminiApiKey = ''; // personal override key (optional)
 let apiPanelOpen = false;
 
 // ── Init ───────────────────────────────────────────────────────────────────
@@ -52,12 +57,16 @@ function updateApiStatus() {
   const badge = document.getElementById('ai-badge');
   const dot = badge.querySelector('.badge-dot');
   const label = badge.querySelector('.badge-label');
-  if (geminiApiKey) {
+  // Worker proxy = AI always available for everyone
+  if (WORKER_URL && !WORKER_URL.includes('PLACEHOLDER')) {
     dot.classList.remove('inactive');
     label.textContent = 'Gemini AI Active';
+  } else if (geminiApiKey) {
+    dot.classList.remove('inactive');
+    label.textContent = 'Gemini AI (Personal Key)';
   } else {
     dot.classList.add('inactive');
-    label.textContent = 'No API Key';
+    label.textContent = 'AI Unavailable';
   }
 }
 
@@ -191,7 +200,8 @@ async function runAnalysis() {
 
     // Step 4: AI (only attempt if key + JD are present)
     const hasJD = !!(jd && jd.length > 20);
-    const aiKeyWasSet = !!geminiApiKey;
+    const workerReady = WORKER_URL && !WORKER_URL.includes('PLACEHOLDER');
+    const aiKeyWasSet = workerReady || !!geminiApiKey;
     let aiResult = null;
     let aiFailed = false;
 
@@ -346,9 +356,56 @@ function computeKeywordMatch(resumeText, jd) {
   return { matchScore, matchedKeywords: matched.slice(0, 25), missingKeywords: missing, totalJDKeywords: jdKw.length, totalMatched: matched.length };
 }
 
-// ── Gemini API (Browser) ───────────────────────────────────────────────────
+// ── Gemini API — tries Worker proxy first, falls back to personal key ──────
 async function callGeminiAPI(resumeText, jd) {
-  const prompt = `You are an expert ATS analyst and career coach. Analyze this RESUME vs JOB DESCRIPTION.
+  const prompt = buildGeminiPrompt(resumeText, jd);
+
+  // 1️⃣ Try the Cloudflare Worker proxy (shared key, secure)
+  if (WORKER_URL && !WORKER_URL.includes('PLACEHOLDER')) {
+    try {
+      const resp = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        return parseGeminiResponse(data);
+      }
+      // Worker returned error — fall through to personal key
+      console.warn('Worker proxy failed:', resp.status);
+    } catch (err) {
+      console.warn('Worker proxy unreachable:', err.message);
+    }
+  }
+
+  // 2️⃣ Fall back to personal key if the user added one
+  if (geminiApiKey) {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
+      }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      const msg = err?.error?.message || 'Gemini API error';
+      if (msg.includes('API_KEY_INVALID') || resp.status === 400) {
+        throw new Error('Invalid Gemini API key. Please check and try again.');
+      }
+      return null;
+    }
+    return parseGeminiResponse(await resp.json());
+  }
+
+  return null;
+}
+
+function buildGeminiPrompt(resumeText, jd) {
+  return `You are an expert ATS analyst and career coach. Analyze this RESUME vs JOB DESCRIPTION.
 
 RESUME:
 ${resumeText.substring(0, 3000)}
@@ -367,30 +424,9 @@ Respond ONLY with valid JSON:
   "atsOptimizationTips": ["tip1", "tip2", "tip3"],
   "estimatedMatchScore": 75
 }`;
+}
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
-
-  const resp = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
-    }),
-  });
-
-  if (!resp.ok) {
-    const err = await resp.json();
-    const msg = err?.error?.message || 'Gemini API error';
-    if (msg.includes('API_KEY_INVALID') || resp.status === 400) {
-      throw new Error('Invalid Gemini API key. Please check and try again.');
-    }
-    // Non-fatal: just return null so rule-based results still show
-    console.warn('Gemini API failed:', msg);
-    return null;
-  }
-
-  const data = await resp.json();
+function parseGeminiResponse(data) {
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
   const match = text.match(/\{[\s\S]*\}/);
   if (match) {

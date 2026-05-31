@@ -25,40 +25,9 @@
         <div class="logo-icon">
           <svg viewBox="0 0 24 24" fill="none">
             <path d="M9 12h6M9 16h6M9 8h3M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="18" cy="18" r="4" fill="currentColor" opacity="0.8"/>
-            <path d="M16.5 18l1 1 2-2" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
+      <div class="header-left">
+        <div class="logo-icon">✨</div>
         <span class="logo-text">Resume<span class="logo-accent">AI</span></span>
-      </div>
-      <div class="header-right">
-        <div class="header-badge" id="ai-badge">
-          <span class="badge-dot inactive"></span>
-          <span class="badge-label">No API Key</span>
-        </div>
-        <button class="api-key-btn" id="api-key-btn" onclick="toggleApiKeyPanel()">🔑 Add API Key</button>
-      </div>
-    </div>
-
-    <!-- API Key Dropdown Panel -->
-    <div class="api-panel hidden" id="api-panel">
-      <div class="api-panel-inner">
-        <div class="api-panel-label">
-          <strong>🤖 Gemini API Key</strong>
-          <span>Enables AI-powered insights. Stored in browser only — never sent anywhere except Google.</span>
-        </div>
-        <div class="api-input-row">
-          <input
-            type="password"
-            id="api-key-input"
-            class="api-key-input"
-            placeholder="AIza..."
-            autocomplete="off"
-          />
-          <button class="api-save-btn" onclick="saveApiKey()">Save</button>
-          <button class="api-clear-btn" onclick="clearApiKey()">Clear</button>
-        </div>
-        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="api-get-link">Get a free Gemini API key →</a>
       </div>
     </div>
   </header>
@@ -136,7 +105,7 @@
           </div>
         </div>
         <textarea id="job-description" class="text-area"
-          placeholder="Paste the job description here...&#10;&#10;Include the full posting: responsibilities, requirements, qualifications, etc."
+          placeholder="Paste job description to find fitment..."
           rows="14"></textarea>
       </div>
     </div>
@@ -256,16 +225,6 @@
         </div>
         <div class="ai-panel full-width-panel"><h4 class="ai-panel-title">🎯 ATS Optimization Tips</h4><ul class="ai-list" id="ai-tips"></ul></div>
         <div class="ai-panel full-width-panel recommendations-panel"><h4 class="ai-panel-title">💡 Recommendations</h4><ul class="ai-list" id="ai-recommendations"></ul></div>
-      </div>
-
-      <!-- AI Nudge -->
-      <div class="ai-nudge hidden" id="ai-nudge">
-        <div class="nudge-icon">🤖</div>
-        <div class="nudge-text">
-          <strong>Unlock AI-powered insights</strong>
-          <p>Click <strong>"🔑 Add API Key"</strong> in the top-right and enter your free Gemini API key to get deep semantic analysis, skill gap detection, and personalized recommendations.</p>
-        </div>
-        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="nudge-btn">Get Free Key →</a>
       </div>
 
       <!-- Sections Detected -->

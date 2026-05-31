@@ -17,66 +17,12 @@ const WORKER_URL = 'https://resumeai-gemini-proxy.jayant-db91.workers.dev/analyz
 // ── State ──────────────────────────────────────────────────────────────────
 let selectedFile = null;
 let currentTab = 'upload';
-let geminiApiKey = ''; // personal override key (optional)
 let apiPanelOpen = false;
 
 // ── Init ───────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  loadApiKey();
+  // Initialization complete
 });
-
-// ── API Key Management ─────────────────────────────────────────────────────
-function loadApiKey() {
-  const stored = localStorage.getItem('resumeai_gemini_key') || '';
-  geminiApiKey = stored;
-  updateApiStatus();
-  if (stored) {
-    document.getElementById('api-key-input').value = stored;
-  }
-}
-
-function saveApiKey() {
-  const val = document.getElementById('api-key-input').value.trim();
-  if (!val) { showToast('Please enter an API key.', 'error'); return; }
-  geminiApiKey = val;
-  localStorage.setItem('resumeai_gemini_key', val);
-  updateApiStatus();
-  toggleApiKeyPanel(true); // close
-  showToast('✅ Gemini API key saved!', 'success');
-}
-
-function clearApiKey() {
-  geminiApiKey = '';
-  localStorage.removeItem('resumeai_gemini_key');
-  document.getElementById('api-key-input').value = '';
-  updateApiStatus();
-  showToast('API key cleared.', 'info');
-}
-
-function updateApiStatus() {
-  const badge = document.getElementById('ai-badge');
-  const dot = badge.querySelector('.badge-dot');
-  const label = badge.querySelector('.badge-label');
-  // Worker proxy = AI always available for everyone
-  if (WORKER_URL && !WORKER_URL.includes('PLACEHOLDER')) {
-    dot.classList.remove('inactive');
-    label.textContent = 'Gemini AI Active';
-  } else if (geminiApiKey) {
-    dot.classList.remove('inactive');
-    label.textContent = 'Gemini AI (Personal Key)';
-  } else {
-    dot.classList.add('inactive');
-    label.textContent = 'AI Unavailable';
-  }
-}
-
-function toggleApiKeyPanel(forceClose = false) {
-  apiPanelOpen = forceClose ? false : !apiPanelOpen;
-  document.getElementById('api-panel').classList.toggle('hidden', !apiPanelOpen);
-  if (apiPanelOpen) {
-    setTimeout(() => document.getElementById('api-key-input').focus(), 50);
-  }
-}
 
 // ── Tab Switching ──────────────────────────────────────────────────────────
 function switchTab(tab) {
@@ -201,7 +147,7 @@ async function runAnalysis() {
     // Step 4: AI (only attempt if key + JD are present)
     const hasJD = !!(jd && jd.length > 20);
     const workerReady = WORKER_URL && !WORKER_URL.includes('PLACEHOLDER');
-    const aiKeyWasSet = workerReady || !!geminiApiKey;
+    const aiKeyWasSet = workerReady;
     let aiResult = null;
     let aiFailed = false;
 
@@ -379,28 +325,6 @@ async function callGeminiAPI(resumeText, jd) {
     }
   }
 
-  // 2️⃣ Fall back to personal key if the user added one
-  if (geminiApiKey) {
-    const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
-    const resp = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
-      }),
-    });
-    if (!resp.ok) {
-      const err = await resp.json();
-      const msg = err?.error?.message || 'Gemini API error';
-      if (msg.includes('API_KEY_INVALID') || resp.status === 400) {
-        throw new Error('Invalid Gemini API key. Please check and try again.');
-      }
-      return null;
-    }
-    return parseGeminiResponse(await resp.json());
-  }
-
   return null;
 }
 
@@ -475,32 +399,11 @@ function renderResults(data) {
     renderTags('missing-tags', data.keywords.missingKeywords, 'missing-tag');
   }
 
-  // AI section — three possible states:
+  // AI section
   if (data.ai) {
-    // ✅ AI succeeded — show full insights
     document.getElementById('ai-section').classList.remove('hidden');
     renderAI(data.ai);
-  } else if (data.hasJD && data.aiKeyWasSet && data.aiFailed) {
-    // ⚠️ Key was set but API call returned nothing — show soft error
-    document.getElementById('ai-nudge').classList.remove('hidden');
-    const nudgeText = document.querySelector('#ai-nudge .nudge-text');
-    nudgeText.innerHTML = `
-      <strong>⚠️ AI insights unavailable</strong>
-      <p>The Gemini API returned no response. Your key may be invalid, have no quota, or the request timed out. <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent-violet)">Check your key →</a></p>
-    `;
-    document.querySelector('#ai-nudge .nudge-btn').style.display = 'none';
-  } else if (data.hasJD && !data.aiKeyWasSet) {
-    // ℹ️ No key at all — invite them to add one
-    document.getElementById('ai-nudge').classList.remove('hidden');
-    // Reset nudge to default content (in case it was changed by a previous failed run)
-    const nudgeText = document.querySelector('#ai-nudge .nudge-text');
-    nudgeText.innerHTML = `
-      <strong>🤖 Unlock AI-powered insights</strong>
-      <p>Click <strong>"🔑 API Key"</strong> in the top-right and enter your free Gemini API key to get deep semantic analysis, skill gap detection, and personalized recommendations. <em>Your key stays in your browser only — other visitors cannot see or use it.</em></p>
-    `;
-    document.querySelector('#ai-nudge .nudge-btn').style.display = '';
   }
-  // If no JD was provided, show nothing — no nag at all
 
   // Sections
   renderSections(data.ats.details.sections);
@@ -609,12 +512,9 @@ function showLoading(show) {
 }
 
 function hideResults() {
-  ['results-section','keywords-section','ai-section','ai-nudge','kw-breakdown','ai-breakdown'].forEach(id => {
+  ['results-section','keywords-section','ai-section','kw-breakdown','ai-breakdown'].forEach(id => {
     document.getElementById(id).classList.add('hidden');
   });
-  // Reset nudge button visibility in case it was hidden by a failed AI run
-  const nudgeBtn = document.querySelector('#ai-nudge .nudge-btn');
-  if (nudgeBtn) nudgeBtn.style.display = '';
 }
 
 function setAnalyzeBtn(loading) {

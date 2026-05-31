@@ -387,7 +387,7 @@ async function callGeminiAPI(resumeText, jd) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
+        generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
       }),
     });
     if (!resp.ok) {
@@ -427,7 +427,8 @@ Respond ONLY with valid JSON:
 }
 
 function parseGeminiResponse(data) {
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  const text = parts.map(p => p.text || '').join('');
   const match = text.match(/\{[\s\S]*\}/);
   if (match) {
     try { return JSON.parse(match[0]); } catch { return null; }
